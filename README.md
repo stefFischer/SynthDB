@@ -14,7 +14,7 @@ It automatically:
 - Reads your schema (DDL)
 - Understands foreign key relationships
 - Fills tables in dependency order
-- Uses AI models (like LLaMA, Ollama) or random generators to create realistic content
+- Uses AI models (Ollama) to create realistic content
 
 ---
 
@@ -47,18 +47,18 @@ There is some example data in [`src/test/resources/examples`](src/test/resources
 
 ### Command-line Options
 
-| Option | Description                                                                                                                                                                           | Default | Required |
-|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `--schema=<schemaFilePath>` | Path to schema file containing SQL `CREATE TABLE` statements.                                                                                                                         | – | **Yes** |
-| `--url=<url>` | URL of the LLM API endpoint.                                                                                                                                                          | `http://localhost:11434/api/chat` | No |
-| `--model=<model>` | AI model used for data generation.                                                                                                                                                    | `llama3.1` | No |
-| `--database=<databaseType>` | Database type to use. Supported: `MySQL`, `PostgreSQL`.                                                                                                                               | `MySQL` | No |
-| `--example-data-file=<exampleDataFilePath>` | Path to a file containing example `INSERT` statements. Example data can help generate more realistic additional data.                                                                 | – | No |
-| `--examples-per-table=<examplesPerTable>` | Number of example rows per table to include in the AI prompt context. ATTENTION: Too many examples can lead to halluciations in smaller models (e.g., foreign key that do not exist). | `2` | No |
-| `--target=<targetFilePath>` | Path to file where generated output will be written. If not set the output will be written to STDOUT.                                                                                 | – | No |
-| `--target-row-number=<targetRowNumber>` | Target row count for all tables (if not specified per table).                                                                                                                         | `5` | No |
-| `--target-row-numbers-file=<targetRowNumbersFilePath>` | Path to file specifying target row counts per table (properties file).                                                                                                                | – | No |
-| `--verbose` | Enable debug logging output.                                                                                                                                                          | Off | No |
+| Option | Description                                                                                                                                                                            | Default | Required |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `--schema=<schemaFilePath>` | Path to schema file containing SQL `CREATE TABLE` statements.                                                                                                                          | – | **Yes** |
+| `--url=<url>` | URL of the LLM API endpoint.                                                                                                                                                           | `http://localhost:11434/api/chat` | No |
+| `--model=<model>` | AI model used for data generation.                                                                                                                                                     | `llama3.1` | No |
+| `--database=<databaseType>` | Database type to use. Supported: `MySQL`, `PostgreSQL`.                                                                                                                                | `MySQL` | No |
+| `--example-data-file=<exampleDataFilePath>` | Path to a file containing example `INSERT` statements. Example data can help generate more realistic additional data.                                                                  | – | No |
+| `--examples-per-table=<examplesPerTable>` | Number of example rows per table to include in the AI prompt context. ATTENTION: Too many examples can lead to halluciations in smaller models (e.g., foreign keys that do not exist). | `2` | No |
+| `--target=<targetFilePath>` | Path to file where generated output will be written. If not set the output will be written to STDOUT.                                                                                  | – | No |
+| `--target-row-number=<targetRowNumber>` | Target row count for all tables (if not specified per table).                                                                                                                          | `5` | No |
+| `--target-row-numbers-file=<targetRowNumbersFilePath>` | Path to file specifying target row counts per table (properties file).                                                                                                                 | – | No |
+| `--verbose` | Enable debug logging output.                                                                                                                                                           | Off | No |
 
 
 ## Programmatic Usage Example
@@ -74,15 +74,15 @@ import at.sfischer.synth.db.generation.values.TableFiller;
 
 java.sql.Connection conn;
 
-// Define schema using SQL DDL
+// Define schema using SQL DDL. (COMMENTs can help the LLM by explaining the columns or tables)
 String ddl = """
     CREATE TABLE employee (
         id INT PRIMARY KEY AUTO_INCREMENT,
         first_name VARCHAR(50) NOT NULL,
         last_name VARCHAR(50) NOT NULL,
-        hire_date DATE NOT NULL,
+        hire_date DATE NOT NULL COMMENT 'Date when the employee was hired',
         department_id INT REFERENCES department(id)
-    );
+    ) COMMENT='Stores company employees and their employment details';
 
     CREATE TABLE department (
         id INT PRIMARY KEY AUTO_INCREMENT,
