@@ -1,9 +1,10 @@
 plugins {
     id 'java'
+    id 'com.gradleup.shadow' version '8.3.9'
 }
 
 group = 'org.example'
-version = '1.0-SNAPSHOT'
+version = '1.0.0'
 
 repositories {
     mavenCentral()
@@ -34,5 +35,17 @@ test {
     testLogging {
         events "passed", "skipped", "failed", "standardOut", "standardError"
         showStandardStreams = true
+    }
+}
+
+shadowJar {
+    archiveBaseName.set("synthdb")
+    archiveClassifier.set("")
+    archiveVersion.set("1.0.0")
+
+    manifest {
+        attributes(
+                'Main-Class': 'at.sfischer.synth.db.Main'
+        )
     }
 }
