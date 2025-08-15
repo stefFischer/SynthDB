@@ -14,6 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Implementation of {@link InsertDataGeneration} that generates SQL INSERT statements
+ * using the Ollama AI service.
+ */
 public class InsertDataGenerationOllama implements InsertDataGeneration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InsertDataGenerationOllama.class);
@@ -21,11 +25,26 @@ public class InsertDataGenerationOllama implements InsertDataGeneration {
     private final String url;
     private final String model;
 
+    /**
+     * Constructs a new InsertDataGenerationOllama instance.
+     *
+     * @param url   the endpoint URL of the Ollama AI service
+     * @param model the AI model name to use for generating insert statements
+     */
     public InsertDataGenerationOllama(String url, String model) {
         this.url = url;
         this.model = model;
     }
 
+    /**
+     * Generates an SQL INSERT statement for the specified table using the Ollama AI model.
+     *
+     * @param table the {@link Table} to generate the INSERT statement for
+     * @param rowCount the current number of rows already present in the table
+     * @param exampleValues a list of example row values from the table
+     * @param dependentTableValues a map of dependent {@link Table}s to their example values
+     * @return a SQL INSERT statement as a {@link String}
+     */
     @Override
     public String generateInsertStatement(Table table, long rowCount, List<Map<Column, Object>> exampleValues, Map<Table, List<Map<Column, Object>>> dependentTableValues) {
 
@@ -72,7 +91,7 @@ public class InsertDataGenerationOllama implements InsertDataGeneration {
     }
 
     @NotNull
-    public static String generateUserMessage(Table table, long rowCount, String values, String otherTableValues) {
+    protected static String generateUserMessage(Table table, long rowCount, String values, String otherTableValues) {
         String userMessageTemplate = """
         This is the table to generate data for:
         ```

@@ -4,7 +4,6 @@ import at.sfischer.synth.db.model.Column;
 import at.sfischer.synth.db.model.DBSchema;
 import at.sfischer.synth.db.model.InsertStatement;
 import at.sfischer.synth.db.model.Table;
-import io.swagger.v3.oas.annotations.links.Link;
 import net.sf.jsqlparser.JSQLParserException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,10 +14,28 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
+/**
+ * Utility class for creating database tables and populating data.
+ * <p>
+ * This class contains static methods to handle schema creation and table data insertion
+ * in the correct order, taking into account foreign key dependencies between tables.
+ * </p>
+ */
 public class TableFiller {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableFiller.class);
 
+    /**
+     * Creates all tables in the given {@link DBSchema} on the provided {@link Connection}.
+     * <p>
+     * Tables are created in dependency order based on foreign key relationships to
+     * ensure that referenced tables are created before referencing tables.
+     * </p>
+     *
+     * @param schema the {@link DBSchema} containing all tables to create
+     * @param connection the {@link Connection} to the target database
+     * @throws SQLException if a database access error occurs or a SQL statement fails
+     */
     public static void createSchema(DBSchema schema, Connection connection) throws SQLException {
         try (Statement stmt = connection.createStatement()){
             Map<Table, Set<Table>> tableDependencies = schema.getTableDependencies();
@@ -29,10 +46,43 @@ public class TableFiller {
         }
     }
 
+    /**
+     * Populates all tables in the given {@link DBSchema} with generated data.
+     * <p>
+     * This method automatically determines the insertion order of tables based on
+     * foreign key dependencies and fills each table with the specified number of rows.
+     * </p>
+     *
+     * @param schema the {@link DBSchema} containing all tables to fill
+     * @param connection the {@link Connection} to the target database
+     * @param insertDataGeneration the strategy for generating data for each table
+     * @param targetRowNumber the desired number of rows to generate for each table
+     * @param dependentExampleNumber the number of dependent rows to generate for referenced tables
+     * @return a map from each {@link Table} to the list of {@link InsertStatement} objects generated for that table
+     * @throws SQLException if a database access error occurs or a SQL statement fails
+     */
     public static Map<Table, List<InsertStatement>> fillSchema(DBSchema schema, Connection connection, InsertDataGeneration insertDataGeneration, int targetRowNumber, int dependentExampleNumber) throws SQLException {
         return fillSchema(schema, connection, insertDataGeneration, targetRowNumber, dependentExampleNumber, null);
     }
 
+    /**
+     * Populates all tables in the given {@link DBSchema} with generated data,
+     * with optional progress tracking.
+     * <p>
+     * This method automatically determines the insertion order of tables based on
+     * foreign key dependencies and fills each table with the specified number of rows.
+     * A {@link TableFillerProgressListener} can be provided to track progress.
+     * </p>
+     *
+     * @param schema the {@link DBSchema} containing all tables to fill
+     * @param connection the {@link Connection} to the target database
+     * @param insertDataGeneration the strategy for generating data for each table
+     * @param targetRowNumber the desired number of rows to generate for each table
+     * @param dependentExampleNumber the number of dependent rows to generate for referenced tables
+     * @param listener optional listener for tracking progress, can be null
+     * @return a map from each {@link Table} to the list of {@link InsertStatement} objects generated for that table
+     * @throws SQLException if a database access error occurs or a SQL statement fails
+     */
     public static Map<Table, List<InsertStatement>> fillSchema(DBSchema schema, Connection connection, InsertDataGeneration insertDataGeneration, int targetRowNumber, int dependentExampleNumber, TableFillerProgressListener listener) throws SQLException {
         Map<Table, List<InsertStatement>> insertStatements = new LinkedHashMap<>();
         Map<Table, Set<Table>> tableDependencies = schema.getTableDependencies();
@@ -49,10 +99,46 @@ public class TableFiller {
         return insertStatements;
     }
 
+    /**
+     * Populates selected tables in the given {@link DBSchema} with generated data,
+     * using a map of table names to target row numbers.
+     * <p>
+     * This method respects foreign key dependencies between tables, determines the
+     * insertion order automatically, and fills each specified table with the desired
+     * number of rows. Tables not listed in {@code tableTargetRowNumbers} will be skipped.
+     * </p>
+     *
+     * @param schema the {@link DBSchema} containing all tables
+     * @param connection the {@link Connection} to the target database
+     * @param insertDataGeneration the strategy for generating data for each table
+     * @param tableTargetRowNumbers a map from table names to the desired number of rows to generate
+     * @param dependentExampleNumber the number of dependent rows to generate for referenced tables
+     * @return a map from each {@link Table} to the list of {@link InsertStatement} objects generated for that table
+     * @throws SQLException if a database access error occurs or a SQL statement fails
+     */
     public static Map<Table, List<InsertStatement>> fillSchema(DBSchema schema, Connection connection, InsertDataGeneration insertDataGeneration, Map<String, Integer> tableTargetRowNumbers, int dependentExampleNumber) throws SQLException {
         return fillSchema(schema, connection, insertDataGeneration, tableTargetRowNumbers, dependentExampleNumber, null);
     }
 
+    /**
+     * Populates selected tables in the given {@link DBSchema} with generated data,
+     * using a map of table names to target row numbers, with optional progress tracking.
+     * <p>
+     * This method respects foreign key dependencies between tables, determines the
+     * insertion order automatically, and fills each specified table with the desired
+     * number of rows. Tables not listed in {@code tableTargetRowNumbers} will be skipped.
+     * A {@link TableFillerProgressListener} can be provided to track progress.
+     * </p>
+     *
+     * @param schema the {@link DBSchema} containing all tables
+     * @param connection the {@link Connection} to the target database
+     * @param insertDataGeneration the strategy for generating data for each table
+     * @param tableTargetRowNumbers a map from table names to the desired number of rows to generate
+     * @param dependentExampleNumber the number of dependent rows to generate for referenced tables
+     * @param listener optional listener for tracking progress, can be null
+     * @return a map from each {@link Table} to the list of {@link InsertStatement} objects generated for that table
+     * @throws SQLException if a database access error occurs or a SQL statement fails
+     */
     public static Map<Table, List<InsertStatement>> fillSchema(DBSchema schema, Connection connection, InsertDataGeneration insertDataGeneration, Map<String, Integer> tableTargetRowNumbers, int dependentExampleNumber, TableFillerProgressListener listener) throws SQLException {
         if(listener != null){
             listener.setTotalTables(tableTargetRowNumbers.size());
@@ -75,10 +161,46 @@ public class TableFiller {
         return insertStatements;
     }
 
+    /**
+     * Populates a single table with generated data until the target row number is reached.
+     * <p>
+     * This method automatically handles dependent table values for foreign key relationships
+     * and executes the generated INSERT statements on the provided {@link Connection}.
+     * </p>
+     *
+     * @param table the {@link Table} to populate
+     * @param tableDependencies a map of tables to the set of tables that depend on them; can be null
+     * @param connection the {@link Connection} to the database where data will be inserted
+     * @param insertDataGeneration the strategy for generating insert statements for the table
+     * @param targetRowNumber the desired total number of rows in the table after insertion
+     * @param dependentExampleNumber the number of example rows to use from dependent tables for foreign key generation
+     * @return a list of {@link InsertStatement} objects representing the inserted rows
+     * @throws SQLException if a database access error occurs
+     */
     public static List<InsertStatement> fillTable(Table table, Map<Table, Set<Table>> tableDependencies, Connection connection, InsertDataGeneration insertDataGeneration, int targetRowNumber, int dependentExampleNumber) throws SQLException {
         return fillTable(table, tableDependencies, connection, insertDataGeneration, targetRowNumber, dependentExampleNumber, null);
     }
 
+    /**
+     * Populates a single table with generated data until the target row number is reached,
+     * with optional progress tracking via a {@link TableFillerProgressListener}.
+     * <p>
+     * This method automatically handles dependent table values for foreign key relationships
+     * and executes the generated INSERT statements on the provided {@link Connection}.
+     * It will repeatedly attempt to generate and execute inserts until the table reaches
+     * {@code targetRowNumber}, skipping failed inserts while logging errors.
+     * </p>
+     *
+     * @param table the {@link Table} to populate
+     * @param tableDependencies a map of tables to the set of tables that depend on them; can be null
+     * @param connection the {@link Connection} to the database where data will be inserted
+     * @param insertDataGeneration the strategy for generating insert statements for the table
+     * @param targetRowNumber the desired total number of rows in the table after insertion
+     * @param dependentExampleNumber the number of example rows to use from dependent tables for foreign key generation
+     * @param listener an optional {@link TableFillerProgressListener} to track progress, can be null
+     * @return a list of {@link InsertStatement} objects representing the inserted rows
+     * @throws SQLException if a database access error occurs
+     */
     public static List<InsertStatement> fillTable(Table table, Map<Table, Set<Table>> tableDependencies, Connection connection, InsertDataGeneration insertDataGeneration, int targetRowNumber, int dependentExampleNumber, TableFillerProgressListener listener) throws SQLException {
         if(tableDependencies == null){
             tableDependencies = new LinkedHashMap<>();
@@ -128,6 +250,21 @@ public class TableFiller {
         return insertStatements;
     }
 
+    /**
+     * Inserts a list of pre-generated {@link InsertStatement} objects into the database
+     * in the correct order based on table dependencies.
+     * <p>
+     * The method first groups the insert statements by table according to the insertion
+     * order computed from the schema's table dependencies, ensuring that tables are
+     * populated in an order that respects foreign key constraints.
+     * </p>
+     *
+     * @param schema the {@link DBSchema} containing table definitions and dependencies
+     * @param insertStatements the list of {@link InsertStatement} objects to insert; can be null
+     * @param connection the {@link Connection} to the database where data will be inserted
+     * @throws SQLException if a database access error occurs
+     * @throws IllegalStateException if an insert statement references a table not present in the insertion order
+     */
     public static void insertData(DBSchema schema, List<InsertStatement> insertStatements, Connection connection) throws SQLException {
         if(insertStatements == null){
             return;
@@ -157,6 +294,20 @@ public class TableFiller {
         }
     }
 
+    /**
+     * Retrieves random values from a collection of tables.
+     * <p>
+     * For each table in the given collection, a limited number of rows is selected
+     * randomly and returned as a list of column-value mappings.
+     * </p>
+     *
+     * @param tables the collection of {@link Table} objects to retrieve values from; can be null
+     * @param connection the {@link Connection} to the database
+     * @param rowLimit the maximum number of rows to retrieve per table
+     * @return a map where the key is a {@link Table} and the value is a list of rows,
+     *         each row represented as a map from {@link Column} to its corresponding value
+     * @throws SQLException if a database access error occurs
+     */
     public static Map<Table, List<Map<Column, Object>>> getTableValues(Collection<Table> tables, Connection connection, int rowLimit) throws SQLException {
         if(tables == null){
             return new LinkedHashMap<>();
@@ -169,6 +320,19 @@ public class TableFiller {
         return valuesMap;
     }
 
+    /**
+     * Retrieves random values from a single table.
+     * <p>
+     * A limited number of rows is selected randomly from the table, and each row
+     * is returned as a map of column-value pairs.
+     * </p>
+     *
+     * @param table the {@link Table} to retrieve values from
+     * @param connection the {@link Connection} to the database
+     * @param rowLimit the maximum number of rows to retrieve
+     * @return a list of rows, each row represented as a map from {@link Column} to its corresponding value
+     * @throws SQLException if a database access error occurs
+     */
     public static List<Map<Column, Object>> getTableValues(Table table, Connection connection, int rowLimit) throws SQLException {
         List<Map<Column, Object>> values = new LinkedList<>();
         String sql = table.generateSelectRandom(rowLimit);
@@ -187,6 +351,18 @@ public class TableFiller {
         return values;
     }
 
+    /**
+     * Retrieves the total number of rows in a given table.
+     * <p>
+     * Executes a SQL COUNT query generated by the {@link Table#generateCountSelect()} method
+     * and returns the resulting row count.
+     * </p>
+     *
+     * @param connection the {@link Connection} to the database
+     * @param table the {@link Table} to count rows from
+     * @return the number of rows in the table; returns 0 if the table is empty
+     * @throws SQLException if a database access error occurs
+     */
     public static long getRowCount(Connection connection, Table table) throws SQLException {
         String sql = table.generateCountSelect();
         try (Statement stmt = connection.createStatement();
