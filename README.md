@@ -1,0 +1,151 @@
+# SynthDB – Synthetic Data Generator for SQL Databases
+
+> Generate realistic, constraint-aware test data for your SQL-style databases.  
+> Currently supports **MySQL** and **PostgreSQL**.
+
+---
+
+## Description
+
+SynthDB is a CLI and library tool for generating synthetic, constraint-aware data for SQL-style databases.
+
+It automatically:
+
+- Reads your schema (DDL)
+- Understands foreign key relationships
+- Fills tables in dependency order
+- Uses AI models (like LLaMA, Ollama) or random generators to create realistic content
+
+---
+
+## Features
+
+- ✅ Schema parsing for MySQL and PostgreSQL
+- ✅ Foreign key–aware data generation
+- ✅ Configurable target rows per table
+- ✅ Example-based AI generation (Ollama structured outputs)
+- ✅ CLI and library modes
+
+---
+
+## Installation
+
+Clone and build with Gradle:
+
+```bash
+git clone https://github.com/stefFischer/SynthDB.git
+cd synthdb
+./gradlew build
+```
+
+## Usage
+
+```bash
+java -jar synthdb.jar --schema ./schema.sql 
+```
+There is some example data in [`src/test/resources/examples`](src/test/resources/examples) to try it out.
+
+### Command-line Options
+
+| Option | Description                                                                                                                                                                           | Default | Required |
+|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `--schema=<schemaFilePath>` | Path to schema file containing SQL `CREATE TABLE` statements.                                                                                                                         | – | **Yes** |
+| `--url=<url>` | URL of the LLM API endpoint.                                                                                                                                                          | `http://localhost:11434/api/chat` | No |
+| `--model=<model>` | AI model used for data generation.                                                                                                                                                    | `llama3.1` | No |
+| `--database=<databaseType>` | Database type to use. Supported: `MySQL`, `PostgreSQL`.                                                                                                                               | `MySQL` | No |
+| `--example-data-file=<exampleDataFilePath>` | Path to a file containing example `INSERT` statements. Example data can help generate more realistic additional data.                                                                 | – | No |
+| `--examples-per-table=<examplesPerTable>` | Number of example rows per table to include in the AI prompt context. ATTENTION: Too many examples can lead to halluciations in smaller models (e.g., foreign key that do not exist). | `2` | No |
+| `--target=<targetFilePath>` | Path to file where generated output will be written. If not set the output will be written to STDOUT.                                                                                 | – | No |
+| `--target-row-number=<targetRowNumber>` | Target row count for all tables (if not specified per table).                                                                                                                         | `5` | No |
+| `--target-row-numbers-file=<targetRowNumbersFilePath>` | Path to file specifying target row counts per table (properties file).                                                                                                                | – | No |
+| `--verbose` | Enable debug logging output.                                                                                                                                                          | Off | No |
+
+
+## Programmatic Usage Example
+
+In addition to running **SynthDB** from the command line, you can also use it directly in your Java code to create and populate schemas with synthetic data.
+
+### Example: Generating Data for an Employee/Department Schema
+
+```java
+import at.sfischer.synth.db.generation.values.TableFiller;
+
+...
+
+java.sql.Connection conn;
+
+// Define schema using SQL DDL
+String ddl = """
+    CREATE TABLE employee (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        first_name VARCHAR(50) NOT NULL,
+        last_name VARCHAR(50) NOT NULL,
+        hire_date DATE NOT NULL,
+        department_id INT REFERENCES department(id)
+    );
+
+    CREATE TABLE department (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL,
+        location VARCHAR(100)
+    );
+""";
+
+// Provide example data (optional, helps generate more realistic results)
+String exampleData = """
+    INSERT INTO employee (first_name, last_name, hire_date, department_id) VALUES
+        ('Astrid', 'Kovach', '2009-06-19', 2),
+        ('Liam', 'Mendez', '2018-02-01', 1);
+
+    INSERT INTO department (id, name, location) VALUES
+        (1, 'Sales', 'New York'),
+        (2, 'Marketing', 'New York');
+""";
+
+// Set per-table target row numbers
+Map<String, Integer> tableTargetRowNumbers = Map.of(
+    "employee", 10,
+    "department", 5
+);
+
+// Parse schema from DDL
+DBSchema schema = DBSchema.parseSchema(ddl);
+
+// Create the schema in the target database
+TableFiller.createSchema(schema, conn);
+
+// Parse and insert example data
+List<InsertStatement> exampleDataStatements =
+    InsertStatement.parseInsertStatements(schema, exampleData);
+TableFiller.insertData(schema, exampleDataStatements, conn);
+
+// Fill schema with synthetic data
+Map<Table, List<InsertStatement>> insertStatements =
+    TableFiller.fillSchema(schema, conn, INSERT_DATA_GENERATION_OLLAMA, tableTargetRowNumbers, 5);
+
+// Print generated data
+insertStatements.forEach((table, inserts) -> {
+    inserts.forEach(statement -> System.out.println(statement.generateInsertStatement()));
+
+    // Optionally merge inserts per table into one statement
+    InsertStatement merged = InsertStatement.mergeStatements(inserts);
+    System.out.println(merged.generateInsertStatement());
+});
+```
+
+## Dependencies and Limitations
+
+SynthDB relies on the following libraries and components:
+
+- **[JSQLParser](https://github.com/JSQLParser/JSqlParser)**: Used to parse SQL `CREATE TABLE` and `INSERT` statements.  
+  ⚠️ Note: Not all SQL features from all databases are fully supported. Some complex statements might fail to parse.
+
+- **[H2 Database](https://www.h2database.com/)**: Used internally for temporary schema creation and data insertion.  
+  ⚠️ Note: H2 may have limitations compared to MySQL or PostgreSQL. Features like certain constraints, data types, or SQL dialect-specific syntax may not behave exactly the same as in the target database.
+
+
+### Other Limitations
+
+- Only MySQL and PostgreSQL are currently supported.
+- Only Ollama supported so far (tested with `llama3.1`).
+

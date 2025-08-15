@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("org.slf4j:slf4j-api:2.0.17")
+    implementation('ch.qos.logback:logback-classic:1.5.13')
+
+    implementation("info.picocli:picocli:4.7.7")
+
+    implementation("com.openai:openai-java:2.20.1")
+
+    implementation("com.github.jsqlparser:jsqlparser:5.3")
+
+    implementation("com.h2database:h2:2.3.232")
+
+    testImplementation("org.assertj:assertj-core:3.27.4")
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    testImplementation("com.github.docker-java:docker-java:3.5.3")
+    testImplementation("com.github.docker-java:docker-java-transport-httpclient5:3.5.3")
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+        showStandardStreams = true
+    }
+}
