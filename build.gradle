@@ -40,8 +40,8 @@ test {
 
 shadowJar {
     archiveBaseName.set("synthdb")
-    archiveClassifier.set("")
-    archiveVersion.set("1.0.0")
+    archiveClassifier.set("all")
+    archiveVersion.set("")
 
     manifest {
         attributes(
