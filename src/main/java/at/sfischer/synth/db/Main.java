@@ -1,8 +1,6 @@
 package at.sfischer.synth.db;
 
-import at.sfischer.synth.db.generation.values.InsertDataGenerationOllama;
-import at.sfischer.synth.db.generation.values.TableFiller;
-import at.sfischer.synth.db.generation.values.TableFillerProgressListener;
+import at.sfischer.synth.db.generation.values.*;
 import at.sfischer.synth.db.model.DBSchema;
 import at.sfischer.synth.db.model.InsertStatement;
 import at.sfischer.synth.db.model.Table;
@@ -27,13 +25,27 @@ import java.util.stream.Collectors;
 
 public class Main implements Callable<Integer> {
 
-    @Option(names = "--url", description = "Optional URL to LLM, default: ${DEFAULT-VALUE}")
-    private String url = "http://localhost:11434/api/chat";
+    private static final String OPENAI_API_KEY = "OPENAI_API_KEY";
 
-    @Option(names = "--model", description = "Optional model used for data generation, default: ${DEFAULT-VALUE}")
-    private String model = "llama3.1";
+    @Option(
+            names = "--provider",
+            description = "LLM provider to use. Options: ${COMPLETION-CANDIDATES}, default: ${DEFAULT-VALUE} (For OPENAI you will need to set environment variable: " + OPENAI_API_KEY + ")"
+    )
+    private LlmProvider provider = LlmProvider.OLLAMA;
 
-    @Option(names = "---examples-per-table", description = "Optional number of value for prompt context, default: ${DEFAULT-VALUE}")
+    @Option(
+            names = "--url",
+            description = "Optional URL to LLM, default depends on provider. (OLLAMA: http://localhost:11434/api/chat, OPENAI: https://api.openai.com/v1)"
+    )
+    private String url;
+
+    @Option(
+            names = "--model",
+            description = "Optional model used for data generation, default depends on provider. (OLLAMA: llama3.1, OPENAI: gpt-4o-mini)"
+    )
+    private String model;
+
+    @Option(names = "--examples-per-table", description = "Optional number of value for prompt context, default: ${DEFAULT-VALUE}")
     private Integer examplesPerTable = 2;
 
     @Option(names = "--schema", description = "Path to schema file in from of SQL CREATE TABLE statements", required = true)
@@ -67,12 +79,34 @@ public class Main implements Callable<Integer> {
 //        MSSQLServer // Problem with SELECT * FROM ... ORDER BY RANDOM() LIMIT 5;
     }
 
+    public enum LlmProvider {
+        OLLAMA,
+        OPENAI
+    }
+
     @Override
     public Integer call() throws Exception {
         if (verbose) {
            Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
            rootLogger.setLevel(Level.DEBUG);
         }
+
+        if (provider == LlmProvider.OLLAMA) {
+            if (url == null) {
+                url = "http://localhost:11434/api/chat";
+            }
+            if (model == null) {
+                model = "llama3.1";
+            }
+        } else if (provider == LlmProvider.OPENAI) {
+            if (url == null) {
+                url = "https://api.openai.com/v1";
+            }
+            if (model == null) {
+                model = "gpt-4o-mini";
+            }
+        }
+
         if (targetRowNumbersFilePath != null) {
             Properties props = new Properties();
             try (Reader reader = Files.newBufferedReader(targetRowNumbersFilePath)) {
@@ -112,8 +146,16 @@ public class Main implements Callable<Integer> {
             }
 
             // 3. Generate insert statements.
-            // TODO Allow OpenAI API models as well.
-            InsertDataGenerationOllama insertDataGenerationOllama = new InsertDataGenerationOllama(this.url, this.model);
+            InsertDataGeneration insertDataGeneration;
+            if(provider == LlmProvider.OPENAI){
+                String apiKey = System.getenv(OPENAI_API_KEY);
+                if (apiKey == null || apiKey.isBlank()) {
+                    throw new IllegalStateException("Missing OpenAI API key. Please set environment variable " + OPENAI_API_KEY);
+                }
+                insertDataGeneration = new InsertDataGenerationOpenAI(this.url, apiKey, this.model);
+            } else {
+                insertDataGeneration = new InsertDataGenerationOllama(this.url, this.model);
+            }
             Map<Table, List<InsertStatement>> insertStatements;
 
             TableFillerProgressListener listener = new TableFillerProgressListener() {
@@ -131,9 +173,9 @@ public class Main implements Callable<Integer> {
                 }
             };
             if(tableTargetRowNumbers != null){
-                insertStatements = TableFiller.fillSchema(schema, conn, insertDataGenerationOllama, tableTargetRowNumbers, examplesPerTable, listener);
+                insertStatements = TableFiller.fillSchema(schema, conn, insertDataGeneration, tableTargetRowNumbers, examplesPerTable, listener);
             } else {
-                insertStatements = TableFiller.fillSchema(schema, conn, insertDataGenerationOllama, targetRowNumber, examplesPerTable, listener);
+                insertStatements = TableFiller.fillSchema(schema, conn, insertDataGeneration, targetRowNumber, examplesPerTable, listener);
             }
 
             // 4. Print results.

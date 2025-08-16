@@ -14,7 +14,7 @@ It automatically:
 - Reads your schema (DDL)
 - Understands foreign key relationships
 - Fills tables in dependency order
-- Uses AI models (Ollama) to create realistic content
+- Uses AI models (Ollama, OpenAI) to create realistic content
 
 ---
 
@@ -23,7 +23,7 @@ It automatically:
 - ✅ Schema parsing for MySQL and PostgreSQL
 - ✅ Foreign key–aware data generation
 - ✅ Configurable target rows per table
-- ✅ Example-based AI generation (Ollama structured outputs)
+- ✅ Example-based AI generation (Ollama structured outputs, OpenAI tool calling)
 - ✅ CLI and library modes
 
 ---
@@ -50,8 +50,9 @@ There is some example data in [`src/test/resources/examples`](src/test/resources
 | Option | Description                                                                                                                                                                            | Default | Required |
 |--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `--schema=<schemaFilePath>` | Path to schema file containing SQL `CREATE TABLE` statements.                                                                                                                          | – | **Yes** |
-| `--url=<url>` | URL of the LLM API endpoint.                                                                                                                                                           | `http://localhost:11434/api/chat` | No |
-| `--model=<model>` | AI model used for data generation.                                                                                                                                                     | `llama3.1` | No |
+| `--provider=<provider>` | LLM provider to use. Options: OLLAMA, OPENAI.                                                                                                                                                           | `OLLAMA` | No |
+| `--url=<url>` | URL of the LLM API endpoint.                                                                                                                                                           | depends on provider | No |
+| `--model=<model>` | AI model used for data generation.                                                                                                                                                     | depends on provider | No |
 | `--database=<databaseType>` | Database type to use. Supported: `MySQL`, `PostgreSQL`.                                                                                                                                | `MySQL` | No |
 | `--example-data-file=<exampleDataFilePath>` | Path to a file containing example `INSERT` statements. Example data can help generate more realistic additional data.                                                                  | – | No |
 | `--examples-per-table=<examplesPerTable>` | Number of example rows per table to include in the AI prompt context. ATTENTION: Too many examples can lead to halluciations in smaller models (e.g., foreign keys that do not exist). | `2` | No |
@@ -147,5 +148,5 @@ SynthDB relies on the following libraries and components:
 ### Other Limitations
 
 - Only MySQL and PostgreSQL are currently supported.
-- Only Ollama supported so far (tested with `llama3.1`).
+
 
