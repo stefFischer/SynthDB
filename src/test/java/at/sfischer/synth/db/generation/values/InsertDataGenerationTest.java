@@ -16,17 +16,17 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class InsertDataGenerationOllamaTest {
+public class InsertDataGenerationTest {
 
     @Test
     public void generateEmptyDependentTableValuesTest() {
-        String valuesString = InsertDataGenerationOllama.generateDependentTableValues(new HashMap<>());
+        String valuesString = InsertDataGeneration.generateDependentTableValues(new HashMap<>());
         assertTrue(valuesString.isEmpty());
     }
 
     @Test
     public void generateNullDependentTableValuesTest() {
-        String valuesString = InsertDataGenerationOllama.generateDependentTableValues(null);
+        String valuesString = InsertDataGeneration.generateDependentTableValues(null);
         assertTrue(valuesString.isEmpty());
     }
 
@@ -92,7 +92,7 @@ public class InsertDataGenerationOllamaTest {
             )
         );
 
-        String valuesString = InsertDataGenerationOllama.generateDependentTableValues(dependentTableValues);
+        String valuesString = InsertDataGeneration.generateDependentTableValues(dependentTableValues);
 
         String expected = """
                 Table: employee
@@ -135,7 +135,7 @@ public class InsertDataGenerationOllamaTest {
                 | 3  | Michael Brown | 2020-06-20 | 4800.75 |
                 """;
 
-        String userMessage = InsertDataGenerationOllama.generateUserMessage(employee, 3, values, "");
+        String userMessage = InsertDataGeneration.generateUserMessage(employee, 3, values, "");
         String expected = """
         This is the table to generate data for:
         ```
