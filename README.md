@@ -35,8 +35,15 @@ Clone and build with Gradle:
 ```bash
 git clone https://github.com/stefFischer/SynthDB.git
 cd synthdb
-./gradlew build
+./gradlew shadowJar -x test
 ```
+
+### Running Tests
+
+Some tests depend on an [Ollama Docker container](https://hub.docker.com/r/ollama/ollama) with the `llama3.1` model available.
+- If you don’t have Ollama installed (or don’t want to run it locally), you can skip the tests by adding -x test when building.
+- If you don’t want to set up Ollama manually, the test class `at.sfischer.synth.db.DBTest` will automatically, pull the current image, start an Ollama container and pull the required model if it’s not already present.
+
 
 ## Usage
 
@@ -47,19 +54,19 @@ There is some example data in [`src/test/resources/examples`](src/test/resources
 
 ### Command-line Options
 
-| Option | Description                                                                                                                                                                            | Default | Required |
-|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `--schema=<schemaFilePath>` | Path to schema file containing SQL `CREATE TABLE` statements.                                                                                                                          | – | **Yes** |
-| `--provider=<provider>` | LLM provider to use. Options: OLLAMA, OPENAI.                                                                                                                                                           | `OLLAMA` | No |
-| `--url=<url>` | URL of the LLM API endpoint.                                                                                                                                                           | depends on provider | No |
-| `--model=<model>` | AI model used for data generation.                                                                                                                                                     | depends on provider | No |
-| `--database=<databaseType>` | Database type to use. Supported: `MySQL`, `PostgreSQL`.                                                                                                                                | `MySQL` | No |
-| `--example-data-file=<exampleDataFilePath>` | Path to a file containing example `INSERT` statements. Example data can help generate more realistic additional data.                                                                  | – | No |
-| `--examples-per-table=<examplesPerTable>` | Number of example rows per table to include in the AI prompt context. ATTENTION: Too many examples can lead to halluciations in smaller models (e.g., foreign keys that do not exist). | `2` | No |
-| `--target=<targetFilePath>` | Path to file where generated output will be written. If not set the output will be written to STDOUT.                                                                                  | – | No |
-| `--target-row-number=<targetRowNumber>` | Target row count for all tables (if not specified per table).                                                                                                                          | `5` | No |
-| `--target-row-numbers-file=<targetRowNumbersFilePath>` | Path to file specifying target row counts per table (properties file).                                                                                                                 | – | No |
-| `--verbose` | Enable debug logging output.                                                                                                                                                           | Off | No |
+| Option | Description                                                                                                                                                                                                                                              | Default | Required |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `--schema=<schemaFilePath>` | Path to schema file containing SQL `CREATE TABLE` statements.                                                                                                                                                                                            | – | **Yes** |
+| `--provider=<provider>` | LLM provider to use. Options: OLLAMA, OPENAI. (For OPENAI you will need to set environment variable: `OPENAI_API_KEY`)                                                                                                                                   | `OLLAMA` | No |
+| `--url=<url>` | URL of the LLM API endpoint.                                                                                                                                                                                                                             | depends on provider | No |
+| `--model=<model>` | AI model used for data generation.                                                                                                                                                                                                                       | depends on provider | No |
+| `--database=<databaseType>` | Database type to use. Supported: `MySQL`, `PostgreSQL`.                                                                                                                                                                                                  | `MySQL` | No |
+| `--example-data-file=<exampleDataFilePath>` | Path to a file containing example `INSERT` statements. Example data can help generate more realistic additional data. `SynthDB` treats these entries as part of the final database. Additional data will be generated around them to ensure consistency. | – | No |
+| `--examples-per-table=<examplesPerTable>` | Number of example rows per table to include in the AI prompt context. ATTENTION: Too many examples can lead to halluciations in smaller models (e.g., foreign keys that do not exist).                                                                   | `2` | No |
+| `--target=<targetFilePath>` | Path to file where generated output will be written. If not set the output will be written to STDOUT.                                                                                                                                                    | – | No |
+| `--target-row-number=<targetRowNumber>` | Target row count for all tables (if not specified per table).                                                                                                                                                                                            | `5` | No |
+| `--target-row-numbers-file=<targetRowNumbersFilePath>` | Path to file specifying target row counts per table (properties file).                                                                                                                                                                                   | – | No |
+| `--verbose` | Enable debug logging output.                                                                                                                                                                                                                             | Off | No |
 
 
 ## Programmatic Usage Example
@@ -69,9 +76,18 @@ In addition to running **SynthDB** from the command line, you can also use it di
 ### Example: Generating Data for an Employee/Department Schema
 
 ```java
+import at.sfischer.synth.db.generation.values.InsertDataGeneration;
+import at.sfischer.synth.db.generation.values.InsertDataGenerationOllama;
 import at.sfischer.synth.db.generation.values.TableFiller;
+import at.sfischer.synth.db.model.DBSchema;
+import at.sfischer.synth.db.model.InsertStatement;
+import at.sfischer.synth.db.model.Table;
 
 ...
+
+String URL = "http://localhost:11434/api/chat";
+String MODEL = "llama3.1";
+InsertDataGeneration INSERT_DATA_GENERATION_OLLAMA = new InsertDataGenerationOllama(URL, MODEL);
 
 java.sql.Connection conn;
 
