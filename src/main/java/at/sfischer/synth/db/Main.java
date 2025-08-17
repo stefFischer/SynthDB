@@ -162,7 +162,7 @@ public class Main implements Callable<Integer> {
                 @Override
                 public void onProgress(Table table, long rowsGenerated, long totalRows, long tablesCompleted, long totalTables) {
                     System.out.printf(
-                            "\r%d/%d rows generated | Table progress: %d/%d | Current Table %s",
+                            "\r%d/%d rows generated | Table progress: %d/%d | Current Table %-20s",
                             rowsGenerated,
                             totalRows,
                             tablesCompleted,
@@ -188,13 +188,25 @@ public class Main implements Callable<Integer> {
             }
 
             insertStatements.forEach((table, inserts) -> {
-                InsertStatement merged = InsertStatement.mergeStatements(inserts);
+                if(inserts == null || inserts.isEmpty()){
+                    return;
+                }
 
-                out.println("-- ==========================");
-                out.println("-- Table data: " + table.getName());
-                out.println("-- ==========================");
-                out.println(merged.generateInsertStatement());
-                out.println();
+                try {
+                    InsertStatement merged = InsertStatement.mergeStatements(inserts);
+
+                    out.println("-- ==========================");
+                    out.println("-- Table data: " + table.getName());
+                    out.println("-- ==========================");
+                    out.println(merged.generateInsertStatement());
+                    out.println();
+                } catch (IllegalArgumentException e) {
+                    out.println("-- ==========================");
+                    out.println("-- Table data: " + table.getName());
+                    out.println("-- ==========================");
+                    inserts.forEach(insert -> out.println(insert.generateInsertStatement()));
+                    out.println();
+                }
             });
 
             out.flush();

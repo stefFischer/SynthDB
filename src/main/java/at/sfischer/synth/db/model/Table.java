@@ -3,8 +3,12 @@ package at.sfischer.synth.db.model;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.create.table.ForeignKeyIndex;
 import net.sf.jsqlparser.statement.create.table.Index;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Represents a database table parsed from a SQL CREATE TABLE statement.
@@ -15,6 +19,8 @@ import java.util.*;
  * </p>
  */
 public class Table {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Table.class);
 
     private final CreateTable createTableStatement;
 
@@ -106,10 +112,14 @@ public class Table {
                     String tabName = fkIdx.getTable().getName();
                     List<String> refColNames = fkIdx.getReferencedColumnNames();
                     Table referecedTable = tables.get(tabName);
-                    for (int i = 0; i < colNames.size(); i++) {
-                        Column col = this.columns.get(colNames.get(i));
-                        Column refCol = referecedTable.columns.get(refColNames.get(i));
-                        col.setReference(refCol);
+                    if (referecedTable != null) {
+                        for (int i = 0; i < colNames.size(); i++) {
+                            Column col = this.columns.get(colNames.get(i));
+                            Column refCol = referecedTable.columns.get(refColNames.get(i));
+                            col.setReference(refCol);
+                        }
+                    } else {
+                        LOGGER.warn("Could not find table \"{}\" referenced in definition of table \"{}\"", tabName, getName());
                     }
                 }
             });

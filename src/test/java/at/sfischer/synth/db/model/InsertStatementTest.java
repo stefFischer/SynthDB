@@ -6,12 +6,13 @@ import net.sf.jsqlparser.JSQLParserException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class InsertStatementTest {
 
@@ -134,5 +135,70 @@ public class InsertStatementTest {
         String expectedStatement = "INSERT INTO employee (name) VALUES ('Jane Smith');";
         String actualStatement = insert.generateInsertStatement();
         assertEquals(expectedStatement, actualStatement);
+    }
+
+    @Test
+    void testNullOrEmptyStatements() {
+        assertNull(InsertStatement.mergeStatements(null));
+        assertNull(InsertStatement.mergeStatements(Collections.emptyList()));
+    }
+
+    @Test
+    void testSingleStatement() throws JSQLParserException {
+        InsertStatement stmt = InsertStatement.parseInsertStatement(
+                employeeTable,
+                "INSERT INTO employee (id, name) VALUES (1, 'Alice')"
+        );
+
+        InsertStatement merged = InsertStatement.mergeStatements(Collections.singleton(stmt));
+        assertNotNull(merged);
+        assertEquals(1, merged.getRows().size());
+    }
+
+    @Test
+    void testMergeMultipleStatements() throws JSQLParserException {
+        InsertStatement stmt1 = InsertStatement.parseInsertStatement(
+                employeeTable,
+                "INSERT INTO employee (id, name) VALUES (1, 'Alice')"
+        );
+        InsertStatement stmt2 = InsertStatement.parseInsertStatement(
+                employeeTable,
+                "INSERT INTO employee (id, name) VALUES (2, 'Bob')"
+        );
+
+        InsertStatement merged = InsertStatement.mergeStatements(Arrays.asList(stmt1, stmt2));
+        assertEquals(2, merged.getRows().size());
+        List<Object> names = merged.getRows().stream().map(r -> r.get(employeeTable.getColumn("name"))).toList();
+        assertTrue(names.containsAll(List.of("Alice", "Bob")));
+    }
+
+    @Test
+    void testDifferentTablesThrows() throws JSQLParserException {
+        InsertStatement stmt1 = InsertStatement.parseInsertStatement(
+                employeeTable,
+                "INSERT INTO employee (id, name) VALUES (1, 'Alice')"
+        );
+        InsertStatement stmt2 = InsertStatement.parseInsertStatement(
+                employeeTableAutoIncrement,
+                "INSERT INTO employee (id, name) VALUES (10, 'John')"
+        );
+
+        assertThrows(IllegalArgumentException.class,
+                () -> InsertStatement.mergeStatements(Arrays.asList(stmt1, stmt2)));
+    }
+
+    @Test
+    void testDifferentColumnsThrows() throws JSQLParserException {
+        InsertStatement stmt1 = InsertStatement.parseInsertStatement(
+                employeeTable,
+                "INSERT INTO employee (id, name) VALUES (1, 'Alice')"
+        );
+        InsertStatement stmt2 = InsertStatement.parseInsertStatement(
+                employeeTable,
+                "INSERT INTO employee (id) VALUES (2)"
+        );
+
+        assertThrows(IllegalArgumentException.class,
+                () -> InsertStatement.mergeStatements(Arrays.asList(stmt1, stmt2)));
     }
 }
