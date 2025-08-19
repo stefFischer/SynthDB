@@ -292,7 +292,6 @@ public class InsertStatement {
         Set<Column> columns = first.getRows().isEmpty()
                 ? Collections.emptySet()
                 : first.getRows().getFirst().keySet();
-        columns.removeIf(Column::isAutoIncrement);
 
         List<Map<Column, Object>> rows = new LinkedList<>();
         for (InsertStatement stmt : statements) {
@@ -302,7 +301,6 @@ public class InsertStatement {
 
             for (Map<Column, Object> row : stmt.getRows()) {
                 Set<Column> rowColumns = row.keySet();
-                rowColumns.removeIf(Column::isAutoIncrement);
                 if (!rowColumns.equals(columns)) {
                     throw new IllegalArgumentException("Cannot merge InsertStatements with different columns");
                 }
@@ -335,7 +333,6 @@ public class InsertStatement {
         StringBuilder sb = new StringBuilder();
 
         List<Column> columnList = table.getColumns();
-        columnList.removeIf(Column::isAutoIncrement);
         String columnNames = columnList.stream()
                 .map(Column::getName)
                 .collect(Collectors.joining(", "));
@@ -370,5 +367,29 @@ public class InsertStatement {
 
         sb.append(String.join(",\n\t", valueRows)).append(";");
         return sb.toString();
+    }
+
+    /**
+     * Sets the values for an auto-increment column in the rows of this insert statement.
+     * <p>
+     * The first row in {@link #rows} receives the {@code lastGeneratedValue} returned
+     * by the database. Each subsequent row receives incremented values in order.
+     * <p>
+     * For example, if the database returned 10 for a three-row insert, the values
+     * assigned will be 10, 11, 12 for the first, second, and third row respectively.
+     *
+     * @param autoIncrementColumn the column representing the auto-increment key
+     * @param lastGeneratedValue  the value returned by the database for the insert
+     */
+    public void setAutoIncrementValuesIncrementing(Column autoIncrementColumn, long lastGeneratedValue) {
+        if (autoIncrementColumn == null || rows.isEmpty()) {
+            return;
+        }
+
+        long currentValue = lastGeneratedValue;
+        for (Map<Column, Object> row : rows) {
+            row.put(autoIncrementColumn, currentValue);
+            currentValue++;
+        }
     }
 }

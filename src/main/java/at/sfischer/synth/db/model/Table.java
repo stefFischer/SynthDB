@@ -92,6 +92,25 @@ public class Table {
     }
 
     /**
+     * Returns the column in this table that is defined as auto-increment, if any.
+     *
+     * <p>This method iterates over all columns in the table and returns the first column
+     * for which {@link Column#isAutoIncrement()} returns {@code true}. If no such column
+     * exists, it returns {@code null}.</p>
+     *
+     * @return the auto-increment column, or {@code null} if the table has none
+     */
+    public Column getAutoIncrementKey(){
+        for (Column column : this.columns.values()) {
+            if(column.isAutoIncrement()){
+                return column;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Resolves foreign key references for this table using a map of all tables.
      * <p>
      * This method processes both explicit {@link Index} definitions that are foreign keys
@@ -177,5 +196,24 @@ public class Table {
      */
     public String generateCountSelect() {
         return "SELECT COUNT(*) FROM " + getName();
+    }
+
+    /**
+     * Generates a SQL TRUNCATE statement to remove all rows from this table.
+     * <p>
+     * Note: TRUNCATE is usually faster than DELETE without a WHERE clause,
+     * but some databases may treat it differently (e.g., resetting auto-increment counters).
+     *
+     * @return a SQL string in the form of "TRUNCATE TABLE tableName"
+     */
+    public String generateTruncate() {
+        return "TRUNCATE TABLE " + getName();
+    }
+
+    /**
+     * Generates a DELETE statement to clear all rows.
+     */
+    public String generateDelete() {
+        return "DELETE FROM " + getName();
     }
 }

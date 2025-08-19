@@ -42,7 +42,7 @@ cd synthdb
 
 Some tests depend on an [Ollama Docker container](https://hub.docker.com/r/ollama/ollama) with the `llama3.1` model available.
 - If you don’t have Ollama installed (or don’t want to run it locally), you can skip the tests by adding -x test when building.
-- If you don’t want to set up Ollama manually, the test class `at.sfischer.synth.db.DBTest` will automatically, pull the current image, start an Ollama container and pull the required model if it’s not already present.
+- If you don’t want to set up Ollama manually, the test class `at.sfischer.synth.db.DBFillTests` will automatically, pull the current image, start an Ollama container and pull the required model if it’s not already present.
 
 
 ## Usage

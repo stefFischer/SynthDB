@@ -72,13 +72,6 @@ public class Main implements Callable<Integer> {
 
     private Map<String, Integer> tableTargetRowNumbers = null;
 
-    public enum DatabaseType{
-        MySQL,
-        PostgreSQL,
-//        Oracle, // Problem with SELECT * FROM ... ORDER BY RANDOM() LIMIT 5;
-//        MSSQLServer // Problem with SELECT * FROM ... ORDER BY RANDOM() LIMIT 5;
-    }
-
     public enum LlmProvider {
         OLLAMA,
         OPENAI
