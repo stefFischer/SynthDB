@@ -8,10 +8,7 @@ import net.sf.jsqlparser.JSQLParserException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
 
 /**
@@ -206,6 +203,7 @@ public class TableFiller {
             tableDependencies = new LinkedHashMap<>();
         }
 
+        Column autoIncrementKey = table.getAutoIncrementKey();
         List<InsertStatement> insertStatements = new LinkedList<>();
         try (Statement stmt = connection.createStatement()) {
             long count = getRowCount(connection, table);
@@ -231,7 +229,14 @@ public class TableFiller {
                         continue;
                     }
 
-                    stmt.execute(insert.generateInsertStatement());
+                    if(autoIncrementKey == null){
+                        stmt.execute(insert.generateInsertStatement());
+                    } else {
+                        long id = insertAndGetAutoIncrement(connection, insert);
+                        if(id > 0) {
+                            insert.setAutoIncrementValuesIncrementing(autoIncrementKey, id);
+                        }
+                    }
                     insertStatements.add(insert);
 
                     if(listener != null){
@@ -248,6 +253,38 @@ public class TableFiller {
         }
 
         return insertStatements;
+    }
+
+    /**
+     * Executes the given {@link InsertStatement} on the provided {@link Connection}
+     * and returns the auto-generated key for the first inserted row.
+     * <p>
+     * Note:
+     * <ul>
+     *     <li>If the {@link InsertStatement} inserts multiple rows in a single statement,
+     *     this method will return only the first generated key, not the last or all generated keys.</li>
+     *     <li>If the table does not have an auto-increment column, this method will return -1.</li>
+     * </ul>
+     *
+     * @param connection the JDBC connection to use for executing the insert
+     * @param statement  the {@link InsertStatement} representing the insert to execute
+     * @return the auto-generated key of the first inserted row, or -1 if no auto-generated key is available
+     * @throws SQLException if a database access error occurs or the SQL statement is invalid
+     */
+    private static long insertAndGetAutoIncrement(Connection connection, InsertStatement statement) throws SQLException {
+        Statement stmt = connection.createStatement();
+        stmt.executeUpdate(
+                statement.generateInsertStatement(),
+                Statement.RETURN_GENERATED_KEYS
+        );
+
+        try (ResultSet rs = stmt.getGeneratedKeys()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        }
+
+        return -1;
     }
 
     /**
@@ -321,7 +358,7 @@ public class TableFiller {
     }
 
     /**
-     * Retrieves random values from a single table.
+     * Retrieves random values from the given table.
      * <p>
      * A limited number of rows is selected randomly from the table, and each row
      * is returned as a map of column-value pairs.
