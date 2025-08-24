@@ -132,7 +132,7 @@ public class InsertStatementTest {
         assertThat(rowsToInsert)
                 .containsAll(expected);
 
-        String expectedStatement = "INSERT INTO employee (name) VALUES ('Jane Smith');";
+        String expectedStatement = "INSERT INTO employee (id, name) VALUES (2, 'Jane Smith');";
         String actualStatement = insert.generateInsertStatement();
         assertEquals(expectedStatement, actualStatement);
     }

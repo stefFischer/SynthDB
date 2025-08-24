@@ -73,6 +73,33 @@ public class DBFillTests implements DockerOllamaTests {
     }
 
     @Test
+    public void multiplePostgreSQLTablesFillTest() throws Exception {
+        DatabaseType type = DatabaseType.PostgreSQL;
+        String ddl = """
+            CREATE TABLE employee (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(50),
+                department_id INT,
+                CONSTRAINT fk_employee_department
+                    FOREIGN KEY (department_id)
+                    REFERENCES department (id)
+            );
+
+            CREATE TABLE department (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL UNIQUE,
+                location VARCHAR(100)
+            );
+        """;
+        int targetRowNumber = 5;
+        int fewShotExamples = 2;
+
+        DBSchema schema = DBSchema.parseSchema(ddl);
+
+        testTableFilling(type, schema, targetRowNumber, null, fewShotExamples);
+    }
+
+    @Test
     public void multipleMySQLTablesFillTest() throws Exception {
         DatabaseType type = DatabaseType.MySQL;
         String ddl = """

@@ -3,6 +3,7 @@ package at.sfischer.synth.db.model;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.create.table.ForeignKeyIndex;
 import net.sf.jsqlparser.statement.create.table.Index;
+import net.sf.jsqlparser.statement.create.table.NamedConstraint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,24 @@ public class Table {
         createTableStatement.getColumnDefinitions().forEach(col -> {
             this.columns.put(col.getColumnName(), new Column(this, col));
         });
+        parseConstraints();
+    }
+
+    private void parseConstraints(){
+        List<Index> indices = createTableStatement.getIndexes();
+        if(indices !=null){
+            for (Index index : indices) {
+                if(index instanceof NamedConstraint){
+                    if(index.getType().equalsIgnoreCase("PRIMARY KEY")){
+                        for (Index.ColumnParams column : index.getColumns()) {
+                            String primaryColumnName = column.getColumnName();
+                            Column primaryColumn = getColumn(primaryColumnName);
+                            primaryColumn.setAsPrimaryKey();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
