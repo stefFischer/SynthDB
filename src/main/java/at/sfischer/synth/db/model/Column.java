@@ -41,6 +41,11 @@ public class Column {
     }
 
     private void processColumnDefinition(){
+        if(getType().equalsIgnoreCase("SERIAL")){
+            isAutoIncrement = true;
+            isUnique = true;
+        }
+
         List<String> specs = this.columnDefinition.getColumnSpecs();
         if(specs == null){
             return;
