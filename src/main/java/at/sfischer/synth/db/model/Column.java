@@ -53,7 +53,7 @@ public class Column {
                 continue;
             }
             if (spec.equalsIgnoreCase("PRIMARY") && i + 1 < specs.size() && specs.get(i + 1).equalsIgnoreCase("KEY")) {
-                isPrimaryKey = true;
+                setAsPrimaryKey();
                 i++;
                 continue;
             }
@@ -119,6 +119,11 @@ public class Column {
      */
     public boolean isUnique() {
         return isUnique;
+    }
+
+    protected void setAsPrimaryKey() {
+        isPrimaryKey = true;
+        isUnique = true;
     }
 
     /**
